@@ -84,4 +84,4 @@ Projenin yerel makinede çalıştırılabilmesi için gerekenler:
 
 Proje, Streamlit Cloud'a deploy edildiğinde, `GOOGLE_API_KEY`'in Streamlit'in "Secrets" bölümüne eklenmesi gerekir.
 
-`[DEPLOY LINKI BURAYA]`
+`[https://hulyayoruk-akbank-genai-evrensel-gazetesi-chatbot-app-5cd4ib.streamlit.app/ ]`
