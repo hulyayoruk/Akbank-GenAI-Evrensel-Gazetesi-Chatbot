@@ -1,0 +1,14 @@
+# Sanal Ortam (Virtual Environment)
+venv/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Üretilen Veri Dosyaları
+*.json
+faiss_index/
+
+# Streamlit Konfigürasyonu
+.streamlit/

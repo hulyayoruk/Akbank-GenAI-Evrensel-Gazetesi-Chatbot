@@ -1,0 +1,14 @@
+# === UYUMLU ÇEKİRDEK PAKETLER (LANGCHAIN 0.1.x) ===
+langchain==0.1.20
+langchain-core==0.1.52
+langchain-community==0.0.38
+langchain-google-genai==1.0.3
+
+# === DİĞER PROJE PAKETLERİ ===
+langchain-huggingface
+faiss-cpu
+jq
+sentence-transformers
+streamlit
+requests
+beautifulsoup4
