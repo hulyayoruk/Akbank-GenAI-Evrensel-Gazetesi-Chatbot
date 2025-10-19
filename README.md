@@ -45,8 +45,8 @@ Projenin yerel makinede çalıştırılabilmesi için gerekenler:
 
 1.  Bu repoyu klonlayın:
     ```bash
-    git clone [https://github.com/hulyayoruk/Akbank-GenAI-Evrensel-Gazetesi-Chatbot]
-    cd [Akbank-GenAI-Evrensel-Gazetesi-Chatbot]
+    git clone [https://github.com/hulyayoruk/Akbank-GenAI-Evrensel-Gazetesi-Chatbot.git](https://github.com/hulyayoruk/Akbank-GenAI-Evrensel-Gazetesi-Chatbot.git)
+    cd Akbank-GenAI-Evrensel-Gazetesi-Chatbot
     ```
 
 2.  Bir sanal ortam (virtual environment) oluşturun ve aktifleştirin:
