@@ -8,10 +8,9 @@ __pycache__/
 
 # Üretilen Veri Dosyaları
 *.json
-faiss_index/
 
 # Streamlit Konfigürasyonu
 .streamlit/
 
-# API anahtarını içeren environment dosyası 
+# API anahtarını içeren environment dosyası
 .env
