@@ -2,142 +2,90 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import time
-from datetime import datetime
-import re
+from newspaper import Article, ArticleException
 
-# --- 1. BÖLÜM: YAPILANDIRMA (SİZİN GÖNDERDİĞİNİZ KODA GÖRE GÜNCELLENDİ) ---
-
-# Ana sayfa URL'si (linkleri birleştirmek için)
+# --- 1. BÖLÜM: YAPILANDIRMA ---
 BASE_URL = "https://www.evrensel.net"
-
-# Veri çekeceğimiz hedef sayfa
 TARGET_URL = "https://www.evrensel.net/son-24-saat"
-
-# SİTEYE ÖZEL CSS SEÇİCİLERİ (GÜNCELLENDİ)
-
-# 1. "son-24-saat" listesindeki her bir haberin BAŞLIĞINI içeren etiket.
-#    Döngü için ana giriş noktamiz bu olacak.
-ARTICLE_HEADLINE_SELECTOR = "div.title" 
-
-# 2. Haberin detay sayfasindaki ana içerik metni.
-#    (Bunu koruyoruz, muhtemelen doğrudur. Değilse, bir sonraki adimda bunu da "İncele" ile buluruz)
-ARTICLE_CONTENT_SELECTOR = "div.haber-metni"
-
-# 3. Haberin detay sayfasindaki tarih bilgisi.
-#    (Bunu da koruyoruz)
-ARTICLE_DATE_SELECTOR = "div.tarih-bolumu time"
-
-
-# Sunucuyu yormamak için her istek arasi bekleme süresi (ÇOK ÖNEMLİ)
-# robots.txt 'Crawl-delay: 10' istiyor. Buna UYMALISINIZ.
+ARTICLE_HEADLINE_SELECTOR = "div.title"
 POLITE_WAIT_TIME = 10
-
-# Tarayici taklidi yapmak için User-Agent bilgisi
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-# --- 2. BÖLÜM: YARDIMCI FONKSİYONLAR (Değişiklik yok) ---
+# --- 2. BÖLÜM: YARDIMCI FONKSİYONLAR (HİBRİT YÖNTEM - DÜZELTİLDİ) ---
 
 def get_article_details(article_url):
     """
-    Tek bir haberin URL'sini alir, sayfaya istek atar
-    ve haberin başliğini, tarihini, içeriğini döndürür.
+    requests ile sayfayı indirir ve newspaper ile içeriği akıllıca çeker.
     """
-    print(f"  -> Detaylar çekiliyor: {article_url}")
+    print(f"  -> Detaylar hibrit yöntemle çekiliyor: {article_url}")
     try:
-        response = requests.get(article_url, headers=HEADERS, timeout=10)
+        # 1. Adım: Sayfayı requests ile güvenilir bir şekilde indir.
+        response = requests.get(article_url, headers=HEADERS, timeout=15)
         if response.status_code != 200:
-            print(f"     Hata: Detay sayfasi açilamadi (Kod: {response.status_code})")
+            print(f"     Hata: Sayfa indirilemedi (Kod: {response.status_code}).")
             return None
 
-        soup = BeautifulSoup(response.content, 'html.parser')
+        # 2. Adım: Article nesnesini oluştur.
+        article = Article(article_url, language='tr')
+        
+        # 3. Adım: Kendi indirdiğimiz HTML'i newspaper'a vererek download() çağır.
+        # Bu, "You must download() first" hatasını çözer.
+        article.download(input_html=response.text)
+        article.parse()
 
-        # İçerik Metni
-        content_element = soup.select_one(ARTICLE_CONTENT_SELECTOR)
-        if content_element:
-            paragraphs = content_element.find_all('p')
-            content = "\n".join([p.get_text(strip=True) for p in paragraphs])
-            if not content:
-                content = content_element.get_text(strip=True)
-        else:
-            content = "İçerik Metni Bulunamadi"
-            
-        # Tarih Bilgisi
-        date_element = soup.select_one(ARTICLE_DATE_SELECTOR)
-        date_str = date_element.get_text(strip=True) if date_element else "Tarih Bulunamadi"
+        # 4. Adım: İçeriği kontrol et.
+        if not article.text or len(article.text) < 100:
+             print(f"     Uyarı: Newspaper yeterli içerik bulamadı. Bu haber atlanacak.")
+             return None
 
-        return {
-            "date": date_str,
-            "content": content
-        }
+        # Tarihi al ve string formatına çevir (eğer varsa)
+        date_str = "Tarih Bulunamadı"
+        if article.publish_date:
+            date_str = article.publish_date.strftime('%d %B %Y')
 
-    except requests.exceptions.RequestException as e:
-        print(f"     Hata: {e}")
+        return {"date": date_str, "content": article.text}
+
+    except (requests.exceptions.RequestException, ArticleException) as e:
+        print(f"     Hata: URL işlenirken sorun oluştu ({e}). Atlanıyor.")
         return None
     finally:
-        # Sunucuya saygili olmak için her detay isteği sonrasi bekle
+        # Sunucuya saygılı olmak için her istek sonrası bekle
         time.sleep(POLITE_WAIT_TIME)
 
-
-# --- 3. BÖLÜM: ANA SCRAPING İŞLEMİ (GÜNCELLENDİ) ---
+# --- 3. BÖLÜM: ANA SCRAPING İŞLEMİ ---
 
 def scrape_site():
-    """
-    Ana scraping fonksiyonu. "son-24-saat" sayfasini çeker ve verileri toplar.
-    """
     all_news_data = []
-    
-    print(f"Scraping işlemi başliyor. Hedef: {TARGET_URL}")
-
+    print(f"Scraping işlemi başlıyor. Hedef: {TARGET_URL}")
     try:
-        # 1. Liste Sayfasini Çek (Sadece 1 kez)
         response = requests.get(TARGET_URL, headers=HEADERS, timeout=10)
         if response.status_code != 200:
-            print(f"  Hata: Ana sayfa ({TARGET_URL}) açilamadi (Kod: {response.status_code}). Durduruluyor.")
+            print(f"  Hata: Ana sayfa ({TARGET_URL}) açılamadı. Durduruluyor.")
             return
 
         soup = BeautifulSoup(response.content, 'html.parser')
-
-        # 2. Liste Sayfasindaki Tüm Haber BAŞLIĞI Elementlerini Bul
         headline_elements = soup.select(ARTICLE_HEADLINE_SELECTOR)
         
         if not headline_elements:
-            print(f"  Haber başliği bulunamadi (Seçici: {ARTICLE_HEADLINE_SELECTOR}).")
-            print(f"  Lütfen {TARGET_URL} adresini 'İncele' ile tekrar kontrol edin.")
-            print(f"  'Sayfa Kaynağini Görüntüle' diyerek 'div class=\"title\"' ifadesini aratin.")
+            print(f"  Haber başlığı bulunamadı. Seçicinizi kontrol edin.")
             return
 
-        print(f"  {len(headline_elements)} adet haber başliği bulundu.")
-
-        # 3. Her Haber Başliğini İşle
+        print(f"  {len(headline_elements)} adet haber başlığı bulundu.")
         for headline_element in headline_elements:
-            
-            # Başliği doğrudan elementten al
             headline = headline_element.get_text(strip=True)
-            
-            # Linki (href) almak için başliğin "parent" (ebeveyn) elementine (<a> etiketi) git
             link_element = headline_element.find_parent('a')
             
-            if link_element:
-                href = link_element.get('href')
-            else:
-                print(f"  Hata: '{headline}' başliği için link (<a>) bulunamadi. Atlaniyor.")
-                continue # Link yoksa atla
+            if not link_element or not link_element.get('href'):
+                continue
 
-            # Link tam URL değilse (örn: /gundem/...), BASE_URL ile birleştir
-            if href and not href.startswith('http'):
-                article_url = BASE_URL + href
-            elif href:
-                article_url = href
-            else:
-                print(f"  Hata: '{headline}' başliği için 'href' attribute boş. Atlaniyor.")
-                continue 
+            href = link_element.get('href')
+            article_url = BASE_URL + href if not href.startswith('http') else href
 
-            # 4. Haberin Detay Sayfasini Çek (Yardimci fonksiyonu kullanarak)
             article_details = get_article_details(article_url)
 
-            if article_details:
+            if article_details and article_details["content"]:
                 news_item = {
                     "headline": headline,
                     "url": article_url,
@@ -145,22 +93,18 @@ def scrape_site():
                     "content": article_details["content"]
                 }
                 all_news_data.append(news_item)
-        
-        print(f"\nİşlem tamamlandi. Toplam {len(all_news_data)} haber çekildi.")
 
     except requests.exceptions.RequestException as e:
-        print(f"  Ana sayfayi çekerken hata: {e}.")
+        print(f"  Ana sayfayı çekerken hata: {e}.")
     
-    # 5. Tüm Verileri JSON Dosyasina Kaydet
     if all_news_data:
         output_filename = 'evrensel_son24saat.json'
         with open(output_filename, 'w', encoding='utf-8') as f:
             json.dump(all_news_data, f, ensure_ascii=False, indent=4)
-        print(f"\nİşlem tamamlandi. {len(all_news_data)} haber '{output_filename}' dosyasina kaydedildi.")
+        print(f"\nİşlem tamamlandı. {len(all_news_data)} geçerli haber '{output_filename}' dosyasına kaydedildi.")
     else:
-        print("\nİşlem tamamlandi ancak hiç veri çekilemedi. Lütfen CSS seçicilerinizi (1. Bölüm) kontrol edin.")
-
-# --- 4. BÖLÜM: BETİĞİ ÇALIŞTIR (Değişiklik yok) ---
+        print("\nİşlem tamamlandı ancak hiç geçerli veri çekilemedi.")
 
 if __name__ == "__main__":
     scrape_site()
+

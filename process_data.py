@@ -1,21 +1,22 @@
 import os
 import json
 
-# LangChain kütüphanelerini içe aktar
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import JSONLoader
-# DİKKAT: 0.1.x sürümüne döndüğümüz için import yolu değişti
-from langchain_community.embeddings import HuggingFaceEmbeddings 
+from langchain_huggingface import HuggingFaceEmbeddings
 
-# --- 1. API Anahtari Ayarlama (ARTIK GEREKLİ DEĞİL) ---
-print("Lokal embedding modeli kullanilacak, API anahtari gerekmiyor.")
+print("Lokal embedding modeli kullanılacak, API anahtarı gerekmiyor.")
 
-# --- 2. Veri Yükleme (JSON) ---
 JSON_FILE_PATH = 'evrensel_son24saat.json'
-JSON_LOADER_SCHEMA = '.[] | {"page_content": .content, "metadata": {"source": .url, "title": .headline, "date": .date}}'
 
-print(f"'{JSON_FILE_PATH}' dosyasi yükleniyor...")
+# --- YENİ VE GÜÇLENDİRİLMİŞ ŞEMA ---
+# Artık page_content, "Başlık: [başlık]\n\nİçerik: [içerik]" formatında olacak.
+# Bu, anlamsal aramanın hem başlığı hem de içeriği dikkate almasını sağlar.
+JSON_LOADER_SCHEMA = '.[] | {"page_content": "Başlık: " + .headline + "\n\n" + "İçerik: " + .content, "metadata": {"source": .url, "title": .headline, "date": .date}}'
+
+print(f"'{JSON_FILE_PATH}' dosyası yükleniyor...")
+
 try:
     loader = JSONLoader(
         file_path=JSON_FILE_PATH,
@@ -24,34 +25,39 @@ try:
     )
     data = loader.load()
     if not data:
-        print("JSON dosyasindan hiç doküman yüklenemedi. Dosya boş veya şema yanliş olabilir.")
+        print("JSON dosyasından hiç doküman yüklenemedi.")
         exit()
-    print(f"Başariyla {len(data)} adet haber dokümani yüklendi.")
+    print(f"Başarıyla {len(data)} adet haber dokümanı yüklendi.")
 except Exception as e:
-    print(f"JSON dosyasi yüklenirken hata oluştu: {e}")
+    print(f"JSON dosyası yüklenirken hata oluştu: {e}")
     exit()
 
-# --- 3. Metinleri Parçalama (Chunking) ---
-print("Metinler parçalara (chunks) ayriliyor...")
+print("Metinler parçalara (chunks) ayrılıyor...")
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200
 )
 documents = text_splitter.split_documents(data)
-print(f"Toplam {len(documents)} adet metin parçasi (chunk) oluşturuldu.")
+print(f"Toplam {len(documents)} adet metin parçası (chunk) oluşturuldu.")
 
-# --- 4. Embedding Modeli ve Vektör Veritabani (GÜNCELLENDİ) ---
 print("Lokal Embedding modeli (HuggingFace) yükleniyor...")
 embeddings = HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2",
     model_kwargs={'device': 'cpu'}
 )
-print("FAISS vektör veritabani oluşturuluyor ve veriler yükleniyor...")
+
+print("FAISS vektör veritabanı oluşturuluyor ve veriler yükleniyor...")
 try:
     vector_db = FAISS.from_documents(documents, embeddings)
     DB_SAVE_PATH = "faiss_index"
     vector_db.save_local(DB_SAVE_PATH)
-    print("\nİşlem tamamlandi!")
-    print(f"Vektör veritabani başariyla '{DB_SAVE_PATH}' klasörüne kaydedildi.")
+    print("\nİşlem tamamlandı!")
+    print(f"Vektör veritabanı başarıyla '{DB_SAVE_PATH}' klasörüne kaydedildi.")
 except Exception as e:
-    print(f"Vektör veritabani oluşturulurken bir hata oluştu: {e}")
+    print(f"Vektör veritabanı oluşturulurken bir hata oluştu: {e}")
+    
+import shutil
+
+DB_SAVE_PATH = "faiss_index"
+if os.path.exists(DB_SAVE_PATH):
+    shutil.rmtree(DB_SAVE_PATH)

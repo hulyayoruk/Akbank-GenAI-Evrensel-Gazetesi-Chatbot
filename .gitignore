@@ -13,5 +13,5 @@ faiss_index/
 # Streamlit Konfigürasyonu
 .streamlit/
 
-# API anahtarını içeren environment dosyası (YENİ EKLENDİ)
+# API anahtarını içeren environment dosyası 
 .env

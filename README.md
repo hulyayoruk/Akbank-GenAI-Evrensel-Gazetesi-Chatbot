@@ -1,54 +1,79 @@
-# Proje: Evrensel.net Habercisi - RAG Tabanlı Chatbot
+##🗞️ Proje: Evrensel.net Habercisi - RAG Tabanlı Chatbot
 
-GAIH (Akbank GenAI Bootcamp) projesi kapsamında geliştirilmiş, RAG (Retrieval-Augmented Generation) mimarisini kullanan bir haber chatbot'udur.
+Bu proje, Akbank GenAI Bootcamp (GAIH) kapsamında geliştirilmiştir.
+Amaç, Evrensel.net haber sitesinin “Son 24 Saat” kategorisindeki güncel içerikleri toplayarak, kullanıcıların bu haberlerle ilgili doğal dilde sorular sorabileceği bir RAG (Retrieval-Augmented Generation) tabanlı chatbot oluşturmaktır.
 
-## 1. Projenin Amacı
+Chatbot, yalnızca toplanan haber verilerini kullanarak yanıt üretir ve bağlam dışı cevaplardan (halüsinasyonlardan) kaçınır.
 
-Bu projenin amacı, `evrensel.net` haber sitesinin "Son 24 Saat" kategorisindeki güncel haberleri kullanarak, kullanıcıların bu haberler hakkında doğal dilde sorular sormasına olanak tanıyan bir RAG tabanlı chatbot geliştirmektir. Chatbot, sadece sağlanan haber metinlerini (bağlamı) kullanarak cevaplar üretir ve halüsinasyonu en aza indirmeyi hedefler.
+##🎯 Projenin Amacı
 
-## 2. Veri Seti Hakkında Bilgi
+Kullanıcıya güncel haberler hakkında hızlı, güvenilir ve bağlam temelli bilgi sunan bir sohbet arayüzü geliştirmek.
+Model, dış veri kaynaklarına başvurmadan yalnızca topladığı haberleri temel alır.
 
-Bu proje için hazır bir veri seti kullanılmamıştır. Veri seti, proje gereksinimlerine uygun olarak "toplama/hazırlanış metodolojisi" ile anlık olarak oluşturulmuştur.
+##🗂️ Veri Seti
 
-* **Veri Kaynağı:** `https://www.evrensel.net/son-24-saat`
-* **Toplama Yöntemi:** `scraper.py` betiği, Python'un `requests` ve `BeautifulSoup` kütüphanelerini kullanarak hedef URL'deki haber başlıklarını ve linklerini çeker.
-* **İçerik Çıkarımı:** Betik, toplanan her bir haber linkini ziyaret ederek haberin ana metnini (`div.haber-metni`) ve tarihini (`div.tarih-bolumu time`) ayıklar.
-* **Sonuç:** Bu işlem sonucunda, o an sitede bulunan (yaklaşık 90-100 adet) haberin başlığı, URL'si, tarihi ve içeriği `evrensel_son24saat.json` dosyasına kaydedilir.
+Hazır bir veri seti kullanılmamıştır. Veriler, proje içinde geliştirilen bir scraper betiği ile dinamik olarak toplanır.
 
-## 3. Kullanılan Yöntemler ve Çözüm Mimarisi
+Kaynak: https://www.evrensel.net/son-24-saat
 
-Proje, LangChain kütüphanesi üzerine kurulu bir RAG mimarisi kullanır:
+Toplama Yöntemi: scraper.py, requests ve BeautifulSoup kullanarak haber başlıklarını, bağlantılarını, içeriklerini ve tarihlerini çeker.
 
-1.  **Veri Yükleme (Load):** `evrensel_son24saat.json` dosyası `JSONLoader` ile okunur.
-2.  **Parçalama (Split):** Haber metinleri, `RecursiveCharacterTextSplitter` ile 1000 karakterlik, birbiriyle kesişen parçalara (chunks) ayrılır.
-3.  **Vektörleştirme (Embedding):**
-    * **Model:** `langchain-huggingface` (`all-MiniLM-L6-v2`)
-    * **Süreç:** Tüm metin parçaları, Google API kotalarından kaçınmak için lokal (yerel) bir embedding modeli kullanılarak vektörlere dönüştürülür.
-4.  **Depolama (Store):**
-    * **Veritabanı:** `FAISS`
-    * **Süreç:** Oluşturulan vektörler, hızlı arama (similarity search) yapabilmek için bir `faiss_index` klasörüne kaydedilir.
-5.  **Geri Getirme (Retrieve):** Kullanıcının sorusu, `FAISS` veritabanında en ilgili 3 metin parçasını (context) bulmak için kullanılır.
-6.  **Üretim (Generate):**
-    * **Model:** Google Gemini (`gemini-flash-latest`)
-    * **Süreç:** Bulunan 3 metin parçası (context) ve kullanıcının sorusu, bir prompt şablonu ile birleştirilerek cevap üretmesi için Gemini API'ye gönderilir.
-7.  **Arayüz:**
-    * **Teknolojisi:** `Streamlit`
-    * **Özellik:** Sohbet geçmişini destekleyen bir web arayüzü sunar.
+Kayıt Formatı: Tüm haberler JSON formatında evrensel_son24saat.json dosyasına kaydedilir.
 
-## 4. Elde Edilen Sonuçlar
+Ortalama Veri: Yaklaşık 90–100 güncel haber.
 
-Proje sonucunda, `streamlit` arayüzü üzerinden sunulan, Evrensel gazetesinin güncel haberleri hakkında soruları yanıtlayabilen bir chatbot başarıyla geliştirilmiştir. Chatbot, RAG mimarisi sayesinde sadece sağlanan veriye dayalı cevaplar vermekte ve bağlam dışı sorulduğunda "Bu konuda bilgim yok" diyerek halüsinasyondan kaçınmaktadır.
+##🧠 Mimarinin Genel Yapısı
 
-## 5. Çalışma Kılavuzu (GÜNCELLENDİ)
+Proje, LangChain altyapısı üzerinde oluşturulmuş bir RAG (Retrieve + Generate) mimarisi kullanır.
 
-Projenin yerel makinede çalıştırılabilmesi için gerekenler:
+1-Veri Yükleme:
+evrensel_son24saat.json, JSONLoader ile içeri aktarılır.
 
-1.  Bu repoyu klonlayın:
-    ```bash
+2-Metin Parçalama:
+Haber metinleri, RecursiveCharacterTextSplitter ile 1000 karakterlik bölümlere ayrılır.
+
+3-Vektörleştirme (Embedding):
+
+Model: all-MiniLM-L6-v2 (yerel HuggingFace modeli)
+
+Amaç: Google API kota sınırlamalarından bağımsız, yerel embedding süreci
+
+4-Veri Depolama (FAISS):
+
+Vektörler faiss_index klasörüne kaydedilir.
+
+Hızlı “similarity search” desteği sağlar.
+
+5-Sorgu İşleme (Retrieval):
+
+Kullanıcının sorusu FAISS veritabanında en alakalı 3 parça ile eşleştirilir.
+
+6-Cevap Üretimi (Generation):
+
+Model: gemini-flash-latest
+
+Prompt, seçilen 3 bağlamla birleştirilerek modele gönderilir.
+
+7-Arayüz (Frontend):
+
+Framework: Streamlit
+
+Özellikler: Sohbet geçmişi, sade kullanıcı deneyimi
+
+##🚀 Sonuç
+
+Sonuçta, streamlit arayüzü üzerinden çalışan bir haber tabanlı chatbot geliştirilmiştir.
+Chatbot yalnızca sağlanan haber verilerini kullanarak cevap üretir, bağlam dışı sorularda “Bu konuda bilgim yok.” şeklinde yanıt verir.
+
+##⚙️ Kurulum ve Çalıştırma
+
+ 1-projeyi klonlayın
+ ```bash
     git clone [https://github.com/hulyayoruk/Akbank-GenAI-Evrensel-Gazetesi-Chatbot.git](https://github.com/hulyayoruk/Akbank-GenAI-Evrensel-Gazetesi-Chatbot.git)
     cd Akbank-GenAI-Evrensel-Gazetesi-Chatbot
     ```
 
+   
 2.  Bir sanal ortam (virtual environment) oluşturun ve aktifleştirin:
     ```bash
     python -m venv venv
@@ -79,9 +104,9 @@ Projenin yerel makinede çalıştırılabilmesi için gerekenler:
     ```bash
     streamlit run app.py
     ```
-
-## 6. Web Arayüzü Linki
+##☁️ Streamlit Deploy Bilgisi
 
 Proje, Streamlit Cloud'a deploy edildiğinde, `GOOGLE_API_KEY`'in Streamlit'in "Secrets" bölümüne eklenmesi gerekir.
 
-`[https://hulyayoruk-akbank-genai-evrensel-gazetesi-chatbot-app-5cd4ib.streamlit.app/ ]`
+Sonrasında uygulama bağlantınız aktif olacaktır:
+##🔗 https://hulyayoruk-akbank-genai-evrensel-gazetesi-chatbot-app-5cd4ib.streamlit.app/
