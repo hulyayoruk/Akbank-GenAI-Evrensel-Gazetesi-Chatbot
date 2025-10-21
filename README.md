@@ -74,33 +74,33 @@ Chatbot yalnızca sağlanan haber verilerini kullanarak cevap üretir, bağlam d
     ```
 
    
-2.  Bir sanal ortam (virtual environment) oluşturun ve aktifleştirin:
+ 2.  Bir sanal ortam (virtual environment) oluşturun ve aktifleştirin:
     ```bash
     python -m venv venv
     .\venv\Scripts\activate
     ```
 
-3.  Gerekli tüm kütüphaneleri `requirements.txt` dosyasından yükleyin:
+ 3.  Gerekli tüm kütüphaneleri `requirements.txt` dosyasından yükleyin:
     ```bash
     pip install -r requirements.txt
     ```
-
-4.  **`.env` Dosyası Oluşturun:** Proje ana klasöründe `.env` adında bir dosya oluşturun. İçine, kendi Google Gemini API anahtarınızı aşağıdaki formatta ekleyin:
+ 4.  **`.env` Dosyası Oluşturun:** Proje ana klasöründe `.env` adında bir dosya oluşturun. İçine, kendi Google Gemini API 
+ anahtarınızı aşağıdaki formatta ekleyin:
     ```
     GOOGLE_API_KEY="AIzaSy...SİZİN_ANAHTARINIZ"
     ```
 
-5.  Haber verilerini çekmek için `scraper.py` betiğini çalıştırın (Bu, `evrensel_son24saat.json` dosyasını oluşturur):
+ 5.  Haber verilerini çekmek için `scraper.py` betiğini çalıştırın (Bu, `evrensel_son24saat.json` dosyasını oluşturur):
     ```bash
     python scraper.py
     ```
 
-6.  Vektör veritabanını oluşturmak için `process_data.py` betiğini çalıştırın (Bu, `faiss_index` klasörünü oluşturur):
+ 6.  Vektör veritabanını oluşturmak için `process_data.py` betiğini çalıştırın (Bu, `faiss_index` klasörünü oluşturur):
     ```bash
     python process_data.py
     ```
 
-7.  Streamlit uygulamasını başlatın. Arayüzde API anahtarı sormayacaktır.
+ 7.  Streamlit uygulamasını başlatın. Arayüzde API anahtarı sormayacaktır.
     ```bash
     streamlit run app.py
     ```
