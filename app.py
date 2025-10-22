@@ -1,5 +1,4 @@
 import os
-
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -11,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 # --- 1. Model ve Veritabanı Yükleme Fonksiyonları ---
@@ -35,8 +34,7 @@ def load_models_and_db():
         
     vector_db = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
     
-    # --- RETRIEVER  ---
-    # Arama sonuçlarının kalitesini ve çeşitliliğini artırmak için MMR kullanılıyor.
+    # --- GÜÇLENDİRİLMİŞ RETRIEVER ---
     retriever = vector_db.as_retriever(search_type="mmr", search_kwargs={'k': 10, 'fetch_k': 30})
     
     print("Modeller ve veritabanı yüklendi.")
@@ -59,11 +57,11 @@ def load_llm(google_api_key):
         st.error(f"Gemini modeli yüklenirken hata oluştu: {e}")
         return None
 
-# --- 2. RAG Pipeline (Zincir) Oluşturma  ---
+# --- 2. RAG Pipeline (Zincir) Oluşturma (DÜZELTİLDİ) ---
 
 def create_rag_chain(retriever, llm):
     """
-    Verilen retriever ve llm ile RAG zincirini oluşturur.
+    Verilen retriever ve llm ile RAG zincirini oluşturur ve SADECE cevap metnini döndürür.
     """
     system_prompt = (
         "Sen Evrensel gazetesinin haberleri hakkında bilgi veren bir asistansın. "
@@ -82,21 +80,18 @@ def create_rag_chain(retriever, llm):
         formatted_strings = []
         for doc in docs:
             source = doc.metadata.get('source', 'Kaynak Bulunamadı')
-            formatted_strings.append(f"Kaynak: {source}\n{doc.page_content}")
+            # İçeriğin kendisi "Başlık: ... İçerik: ..." formatında geldiği için ayrıca başlık eklemeye gerek yok.
+            formatted_strings.append(f"Kaynak: {source}\n{doc.page_content}") 
         return "\n\n---\n\n".join(formatted_strings)
 
-    # --- ZİNCİR YAPISI ---
-
-    answer_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    # Cevap zincirini ve kaynakları getiren zinciri birleştiren son yapı
-    rag_chain = RunnableParallel(
-        answer=answer_chain,
-        sources=retriever,
+    # --- DOĞRU VE STABİL ZİNCİR YAPISI ---
+    # Bu yapı, 'invoke' hatasını çözer ve sadece cevabı döndürür.
+    rag_chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | RunnablePassthrough.assign(context=lambda x: format_docs(x["context"])) # Bağlamı formatla
+        | prompt # Formatlanmış bağlamı ve soruyu prompt'a gönder
+        | llm # Prompt'u LLM'e gönder
+        | StrOutputParser() # LLM'den gelen cevabın SADECE metin kısmını al
     )
     return rag_chain
 
@@ -106,8 +101,6 @@ st.set_page_config(page_title="Evrensel Haber Chatbot", layout="wide")
 st.title("📰 Evrensel Gazetesi RAG Chatbot")
 st.markdown("Evrensel gazetesinin 'Son 24 Saat' haberleri hakkında sorular sorun.")
 st.markdown("---")
-
-
 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
@@ -137,10 +130,11 @@ if retriever and llm:
                     # Zincir artık doğrudan cevabı (string) döndürür.
                     response = rag_chain.invoke(user_prompt)
                 st.markdown(response)
-
+                
+                # "Geliştirici Notu" kaldırıldı.
                 st.session_state.messages.append({"role": "assistant", "content": response})
             except Exception as e:
                 st.error(f"Cevap alınırken bir hata oluştu: {e}")
 else:
-    st.error("Uygulama başlatılamadı. Lütfen 'faiss_index' klasörünün olduğundan ve API anahtarınızın doğru olduğundan emin olun.")
+    st.error("Uygulamama başlatılamadı. Lütfen 'faiss_index' klasörünün olduğundan ve API anahtarınızın doğru olduğundan emin olun.")
 
