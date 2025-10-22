@@ -138,11 +138,6 @@ if retriever and llm:
                     response = rag_chain.invoke(user_prompt)
                 st.markdown(response)
 
-        # Cevabı ve debug bilgisini ekrana yazdır
-                answer = response['answer']
-                sources = response['sources']
-                st.markdown(answer)
-                
                 st.session_state.messages.append({"role": "assistant", "content": response})
             except Exception as e:
                 st.error(f"Cevap alınırken bir hata oluştu: {e}")
